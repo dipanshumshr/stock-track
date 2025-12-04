@@ -33,8 +33,6 @@ const measureOptions = {
     ],
 };
 
-// ... (Your Product type and initial state remain the same) ...
-
 type ProductTypes = "dilution" | "motherTincture" | "bioChemic" | "patent" | ""
 
 type Product = {
@@ -128,11 +126,9 @@ function AddStock() {
         <div className="bg-zinc-850 min-h-screen">
             <Navbar title='Add New Stock' />
 
-            {/* 1. Main container for the two-column layout */}
             <main className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-10">
 
-                    {/* 2. Left Column: Information */}
                     <div className="lg:col-span-1">
                         <h2 className="text-2xl font-bold text-white">Stock Item Details</h2>
                         <p className="mt-2 text-sm text-zinc-400">
@@ -140,9 +136,8 @@ function AddStock() {
                         </p>
                     </div>
 
-                    {/* 3. Right Column: The Form */}
+                  
 
-                    {/* Product Type */}
                     <div className="lg:col-span-2">
                         <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleSubmit}>
 
@@ -154,14 +149,12 @@ function AddStock() {
                                 placeHolderText="Select a type"
                             />
 
-                            {/* Product Name */}
+                            {/* Product Name */
                             <div>
                                 <label htmlFor="productName" className="block text-sm font-medium text-zinc-300 mb-2">Product Name</label>
                                 <input id="productName" type="text" name="productName" placeholder='e.g., Arnica Montana' value={productDetail.productName} onChange={handleChange}
                                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 autofill:bg-zinc-800 autofill:text-white" />
                             </div>
-
-                            {/* ... (All your other form fields go here just like before) ... */}
 
                             {/* Product Measure Based on Product type*/}
 
@@ -200,10 +193,8 @@ function AddStock() {
 
 
                             <div className="md:col-span-2">
-                                {/* This nested grid creates two columns JUST for the items inside it */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                                    {/* Sale Price Field */}
                                     <div>
                                         <label htmlFor="productPrice" className="block text-sm font-medium text-zinc-300 mb-2">
                                             Sale Price (MRP)
@@ -221,7 +212,6 @@ function AddStock() {
 
                                     {/* Expiry Date Field */}
                                     <div>
-                                        {/* We only render this part if the product type requires it */}
                                         {(productDetail.productType === "bioChemic" || productDetail.productType === "patent") && (
                                             <>
                                                 <label htmlFor="productExpiry" className="block text-sm font-medium text-zinc-300 mb-2">
