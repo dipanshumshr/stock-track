@@ -30,8 +30,7 @@ function MedCard({ medObj }: MedCardProps) {
         </div>
       </div>
 
-      {/* Body: Details */}
-      {/* Text color changed to light zinc (zinc-300) */}
+      
       <div className="p-5 space-y-4 text-zinc-300">
 
         {/* Package Size */}
