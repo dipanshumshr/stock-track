@@ -63,7 +63,7 @@ function MedCard({ medObj }: MedCardProps) {
         </div>
         {/* Button: Adjusted hover state for dark mode */}
         <button className="text-white bg-[#778873] hover:bg-[#A1BC98] focus:ring-4 focus:ring-[#D2DCB6] font-medium rounded-lg text-sm px-6 py-2.5 text-center transition-colors">
-          Add to Cart
+          Edit
         </button>
       </div>
     </div>

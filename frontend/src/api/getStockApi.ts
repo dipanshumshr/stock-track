@@ -1,11 +1,14 @@
 // src/api/getStockApi.ts
 
-// 1. Import the correct type from your columns file
-import type { StockItemAPIResponse } from '../data/Column'; // Adjust path if needed
+import type { StockApiResponse } from "@/Types/MedicineType";
 
-// 2. Update the function's return type
-export const getStock = async (): Promise<StockItemAPIResponse[]> => {
-    const response = await fetch("/api/stock");
+import type { sortOptions } from "../Types/sortTypes"
+
+export const getStock = async ({page = 1 , limit = 10 , sort , order} : sortOptions) : Promise<StockApiResponse> => {
+
+    const requestURL = `/api/stock?sort=${sort}&limit=${limit}&order=${order}&page=${page}`
+
+    const response = await fetch(requestURL);
     
     if (!response.ok) {
         const errorMsg = await response.json();
@@ -14,6 +17,5 @@ export const getStock = async (): Promise<StockItemAPIResponse[]> => {
 
     const respData = await response.json();
 
-    // 3. My backend will return an object like { items: [...] }, so return the array
-    return respData.items || []; 
+    return respData || []; 
 }

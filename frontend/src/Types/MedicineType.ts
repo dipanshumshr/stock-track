@@ -20,3 +20,13 @@ export interface MedicineItem {
   updatedAt: string;
   __v: number;
 }
+
+export interface StockApiResponse {
+    items: MedicineItem[];
+    pagination: {
+        totalItems: number;
+        currentPage: number;
+        totalPages: number;
+        itemsPerPage: number;
+    }
+}

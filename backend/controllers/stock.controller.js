@@ -1,49 +1,113 @@
+// backend/controllers/stock.controller.js
+
+const Product = require('../models/Product.model');
+const StockItem = require('../models/StockItem.model');
+
+// --- 1. ADD STOCK ITEM ---
+exports.addStockItem = async (req, res) => {
+    try {
+        const {
+            productName,
+            productType,
+            productMeasure,
+            productPotency,
+            productBrand,
+            productQuantity,
+            productPrice,
+            productPurchasePrice,
+            productExpiry,
+        } = req.body;
+
+        // --- Data Formatting ---
+        const name = productName.toUpperCase().trim();
+        const type = productType.toUpperCase().trim();
+        const brand = productBrand.toUpperCase().trim();
+
+        // 1. Find or Create the Generic Product (Name + Type only)
+        const productQuery = { name, type };
+        
+        const product = await Product.findOneAndUpdate(
+            productQuery,
+            { $setOnInsert: productQuery },
+            { upsert: true, new: true, runValidators: true }
+        );
+
+        // 2. Build the Stock Item object
+        const newStockItemData = {
+            productId: product._id,
+            brand: brand,
+            quantity: productQuantity,
+            salePrice: productPrice,
+            purchasePrice: productPurchasePrice || 0,
+            measure: productMeasure ? productMeasure.toUpperCase().trim() : null,
+            potency: productPotency ? productPotency.toUpperCase().trim() : null,
+        };
+
+        if (productExpiry) {
+            newStockItemData.expiryDate = new Date(productExpiry);
+        }
+
+        const newStockItem = new StockItem(newStockItemData);
+        await newStockItem.save();
+
+        res.status(201).json({
+            success: true,
+            message: `Successfully added stock for ${brand} ${name}.`,
+            data: newStockItem,
+        });
+
+    } catch (error) {
+        console.error('Error adding stock item:', error);
+        res.status(500).json({ success: false, message: 'Server error while adding stock.' });
+    }
+};
+
+
+// --- 2. GET ALL STOCK ITEMS (With Pagination & Sorting) ---
 exports.getAllStockItems = async (req, res) => {
     try {
-        // 1. Pagination Params (Default: Page 1, 10 items)
+        // A. Pagination Params (Default: Page 1, 10 items)
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        // 2. Sorting Params
-        // Sort by 'name' (A-Z) or 'date' (Updated Time)
-        // Order: 'asc' (1) or 'desc' (-1)
+        // B. Sorting Params
         const sortBy = req.query.sort || 'date'; 
         const sortOrder = req.query.order === 'asc' ? 1 : -1;
 
-        // Determine which field to sort by
+        // Determine sort stage
         let sortStage = {};
         if (sortBy === 'name') {
-            sortStage = { 'productDetails.name': sortOrder }; // Sorts by the joined Product Name
+            sortStage = { 'productDetails.name': sortOrder }; // Sort by joined Product Name
         } else {
-            sortStage = { 'updatedAt': sortOrder }; // Default: Sorts by Date
+            sortStage = { 'updatedAt': sortOrder }; // Default: Sort by Date
         }
 
-        // 3. The Aggregation Pipeline
+        // C. Aggregation Pipeline
         const result = await StockItem.aggregate([
-            // A. Join with Products collection to get names
+            // 1. Join with Products to get the Name
             {
                 $lookup: {
-                    from: 'products',       // Ensure this matches your actual DB collection name (usually lowercase plural)
+                    from: 'products',       // Must match DB collection name (lowercase plural)
                     localField: 'productId',
                     foreignField: '_id',
                     as: 'productDetails'
                 }
             },
             
-            // B. Unwind the array so we can access fields directly
+            // 2. Unwind array to access fields
             { $unwind: '$productDetails' },
 
-            // C. Apply the Sort
+            // 3. Apply Sorting
             { $sort: sortStage },
 
-            // D. Get Data + Count (in parallel)
+            // 4. Get Data + Count (in parallel using facet)
             {
                 $facet: {
                     data: [
                         { $skip: skip },
                         { $limit: limit },
-                        // Reshape data to look like the old .populate() format
+                        // Reshape to match standard .populate() output
                         { 
                             $addFields: { productId: "$productDetails" } 
                         },
@@ -54,7 +118,7 @@ exports.getAllStockItems = async (req, res) => {
             }
         ]);
 
-        // 4. Extract data safely
+        // D. Extract data safely
         const stockItems = result[0].data;
         const totalItems = result[0].metadata[0] ? result[0].metadata[0].total : 0;
 

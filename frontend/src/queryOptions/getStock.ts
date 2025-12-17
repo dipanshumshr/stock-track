@@ -1,7 +1,9 @@
 import { getStock } from "@/api/getStockApi";
 import { queryOptions } from "@tanstack/react-query";
+import type { sortOptions } from "../Types/sortTypes"
 
-export const createStockOptions = queryOptions({
-    queryKey : ["stock"],
-    queryFn : getStock
+
+export const createStockOptions = (params : sortOptions) =>  queryOptions({
+    queryKey : ["stock" , params.limit , params.order, params.page, params.sort],
+    queryFn : () => getStock(params)
 })
