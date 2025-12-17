@@ -2,27 +2,52 @@ import React, { useState } from 'react'
 import Navbar from '../components/Navbar'
 import { useQuery } from '@tanstack/react-query';
 import { createStockOptions } from '@/queryOptions/getStock';
-import { DataTable } from '@/components/DataTable';
-import { columns } from '@/data/Column';
+import MedCard from '@/components/MedCard';
+import SortOption from '@/components/SortOption';
 
 function SearchBox() {
 
-    const [searchText , setSearchText] = useState("")
-   
-    const { data : stockItems , isError , isPending  } = useQuery(createStockOptions)
+  const [searchText, setSearchText] = useState("")
+  const [sort, setSort] = useState<String>("date");
+  const [order , setOrder] = useState<String>("asc")
+  const [pageNumber, setPageNumber] = useState<Number>(1)
 
-    
+  const { data, isError, isPending, refetch } = useQuery(createStockOptions({sort , order , page : pageNumber , limit : 10}))
+
+
+  function handleSortOption(sortParem : String , orderParem : String)
+  {
+    setOrder(orderParem)
+    setSort(sortParem)
+  }
+
+  console.log(data)
+
   return (
     <>
-        <Navbar title='Search Item'/>
-        <div>
-              {isPending && <p>Loading...</p>}
-              {isError && <div> Error Fetching data </div>}
-              <div>
-                <DataTable columns={columns} data={stockItems || []}/>
-              </div>
+      <Navbar title='Search Item' />
+      <div>
+        {isPending && <p>Loading...</p>}
+        {isError && <div> Error Fetching data <button onClick={() => refetch()}>Refetch</button> </div>}
+        <div className='flex justify-center items-center w-full h-30 gap-4.5'>
+          <input
+            className="block w-[550px] pl-14 pr-5 py-4 text-xl text-white bg-zinc-900 border border-zinc-800 rounded-2xl placeholder-zinc-500 shadow-lg shadow-blue-500/5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50  focus:bg-zinc-800 focus:scale-[1.01]"
+            type="text"
+            value={searchText}
+            placeholder='Enter the medicine'
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchText(e.target.value)} />
+
+          <SortOption onStateUpdate = {handleSortOption}/>
+
         </div>
-        
+
+        <div className='grid grid-cols-[400px_400px_400px] auto-rows-[300px] gap-10 justify-center mt-4 pb-20'>
+         {
+          data?.items?.map(val => (<MedCard key={val.productId._id} medObj={val}/>))
+         }
+        </div>
+      </div>
+
     </>
   )
 }
