@@ -4,6 +4,6 @@ import type { sortOptions } from "../Types/sortTypes"
 
 
 export const createStockOptions = (params : sortOptions) =>  queryOptions({
-    queryKey : ["stock" , params.limit , params.order, params.page, params.sort],
+    queryKey : ["stock" , params.limit , params.order, params.page, params.sort, params.search],
     queryFn : () => getStock(params)
 })

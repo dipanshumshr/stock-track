@@ -149,7 +149,7 @@ function AddStock() {
                                 placeHolderText="Select a type"
                             />
 
-                            {/* Product Name */
+
                             <div>
                                 <label htmlFor="productName" className="block text-sm font-medium text-zinc-300 mb-2">Product Name</label>
                                 <input id="productName" type="text" name="productName" placeholder='e.g., Arnica Montana' value={productDetail.productName} onChange={handleChange}

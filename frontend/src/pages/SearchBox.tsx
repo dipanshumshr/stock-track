@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Navbar from '../components/Navbar'
 import { useQuery } from '@tanstack/react-query';
 import { createStockOptions } from '@/queryOptions/getStock';
@@ -8,12 +8,23 @@ import SortOption from '@/components/SortOption';
 function SearchBox() {
 
   const [searchText, setSearchText] = useState("")
+  const [debounced, setDebounced] = useState("")
   const [sort, setSort] = useState<String>("date");
   const [order , setOrder] = useState<String>("asc")
   const [pageNumber, setPageNumber] = useState<Number>(1)
 
-  const { data, isError, isPending, refetch } = useQuery(createStockOptions({sort , order , page : pageNumber , limit : 10}))
+  const { data, isError, isPending, refetch } = useQuery(createStockOptions({sort , order , page : pageNumber , limit : 10, search : debounced}))
 
+
+  useEffect(()=>{
+    const timerRef = setTimeout(()=>{
+      setDebounced(searchText)
+    },1000) 
+
+    return()=>{
+      clearTimeout(timerRef)
+    }
+  },[searchText])
 
   function handleSortOption(sortParem : String , orderParem : String)
   {
@@ -21,7 +32,14 @@ function SearchBox() {
     setSort(sortParem)
   }
 
-  console.log(data)
+
+  function handleSearch(e : React.ChangeEvent<HTMLInputElement>)
+  {
+    const searchText = e.target.value;
+    setSearchText(searchText)
+  }
+
+  
 
   return (
     <>
@@ -35,7 +53,7 @@ function SearchBox() {
             type="text"
             value={searchText}
             placeholder='Enter the medicine'
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchText(e.target.value)} />
+            onChange={handleSearch} />
 
           <SortOption onStateUpdate = {handleSortOption}/>
 
@@ -43,7 +61,7 @@ function SearchBox() {
 
         <div className='grid grid-cols-[400px_400px_400px] auto-rows-[300px] gap-10 justify-center mt-4 pb-20'>
          {
-          data?.items?.map(val => (<MedCard key={val.productId._id} medObj={val}/>))
+          data?.items?.map(val => (<MedCard key={val._id} medObj={val}/>))
          }
         </div>
       </div>

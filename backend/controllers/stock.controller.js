@@ -3,7 +3,7 @@
 const Product = require('../models/Product.model');
 const StockItem = require('../models/StockItem.model');
 
-// --- 1. ADD STOCK ITEM ---
+// --- 1. ADD STOCK (With Merge Logic) ---
 exports.addStockItem = async (req, res) => {
     try {
         const {
@@ -13,48 +13,75 @@ exports.addStockItem = async (req, res) => {
             productPotency,
             productBrand,
             productQuantity,
-            productPrice,
-            productPurchasePrice,
+            productPrice,         // Sale Price
+            productPurchasePrice, // Buying Price
             productExpiry,
         } = req.body;
 
-        // --- Data Formatting ---
+        // A. Standardize Inputs
         const name = productName.toUpperCase().trim();
         const type = productType.toUpperCase().trim();
         const brand = productBrand.toUpperCase().trim();
+        const measure = productMeasure ? productMeasure.toUpperCase().trim() : null;
+        const potency = productPotency ? productPotency.toUpperCase().trim() : null;
 
-        // 1. Find or Create the Generic Product (Name + Type only)
+        // B. Find or Create Generic Product (Name + Type)
         const productQuery = { name, type };
-        
         const product = await Product.findOneAndUpdate(
             productQuery,
             { $setOnInsert: productQuery },
             { upsert: true, new: true, runValidators: true }
         );
 
-        // 2. Build the Stock Item object
-        const newStockItemData = {
+        // C. Find if this EXACT Stock Item already exists
+        // We match: ProductID + Brand + Potency + Measure
+        const stockQuery = {
             productId: product._id,
             brand: brand,
-            quantity: productQuantity,
-            salePrice: productPrice,
-            purchasePrice: productPurchasePrice || 0,
-            measure: productMeasure ? productMeasure.toUpperCase().trim() : null,
-            potency: productPotency ? productPotency.toUpperCase().trim() : null,
+            potency: potency,
+            measure: measure
         };
 
-        if (productExpiry) {
-            newStockItemData.expiryDate = new Date(productExpiry);
+        // D. Update or Insert
+        const stockItem = await StockItem.findOne(stockQuery);
+
+        if (stockItem) {
+            // SCENARIO 1: Item exists -> Merge it!
+            stockItem.quantity += parseInt(productQuantity); // Add new quantity to old
+            stockItem.salePrice = productPrice; // Update to latest price
+            
+            // Optional: Update expiry if provided
+            if (productExpiry) stockItem.expiryDate = new Date(productExpiry);
+            
+            await stockItem.save();
+
+            res.status(200).json({
+                success: true,
+                message: `Updated stock for ${brand} ${name}. New Qty: ${stockItem.quantity}`,
+                data: stockItem,
+            });
+        } else {
+            // SCENARIO 2: Item does not exist -> Create new!
+            const newStockItemData = {
+                ...stockQuery, // Inherit IDs and attributes from query above
+                quantity: productQuantity,
+                salePrice: productPrice,
+                purchasePrice: productPurchasePrice || 0,
+            };
+
+            if (productExpiry) {
+                newStockItemData.expiryDate = new Date(productExpiry);
+            }
+
+            const newStockItem = new StockItem(newStockItemData);
+            await newStockItem.save();
+
+            res.status(201).json({
+                success: true,
+                message: `Created new stock for ${brand} ${name}.`,
+                data: newStockItem,
+            });
         }
-
-        const newStockItem = new StockItem(newStockItemData);
-        await newStockItem.save();
-
-        res.status(201).json({
-            success: true,
-            message: `Successfully added stock for ${brand} ${name}.`,
-            data: newStockItem,
-        });
 
     } catch (error) {
         console.error('Error adding stock item:', error);
@@ -63,54 +90,63 @@ exports.addStockItem = async (req, res) => {
 };
 
 
-// --- 2. GET ALL STOCK ITEMS (With Pagination & Sorting) ---
+// --- 2. GET ALL STOCK (With Search, Sort & Pagination) ---
 exports.getAllStockItems = async (req, res) => {
     try {
-        // A. Pagination Params (Default: Page 1, 10 items)
+        // A. Pagination & Sort Params
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
-
-        // B. Sorting Params
+        
         const sortBy = req.query.sort || 'date'; 
         const sortOrder = req.query.order === 'asc' ? 1 : -1;
+        
+        // B. Search Param
+        const search = req.query.search || "";
 
-        // Determine sort stage
+        // C. Build Sort Stage
         let sortStage = {};
         if (sortBy === 'name') {
-            sortStage = { 'productDetails.name': sortOrder }; // Sort by joined Product Name
+            sortStage = { 'productDetails.name': sortOrder };
         } else {
-            sortStage = { 'updatedAt': sortOrder }; // Default: Sort by Date
+            sortStage = { 'updatedAt': sortOrder };
         }
 
-        // C. Aggregation Pipeline
+        // D. Build Match (Search) Stage
+        let matchStage = {};
+        if (search) {
+            matchStage = {
+                $or: [
+                    { "productDetails.name": { $regex: search, $options: "i" } },
+                    { "brand": { $regex: search, $options: "i" } }
+                ]
+            };
+        }
+
+        // E. Aggregation Pipeline
         const result = await StockItem.aggregate([
-            // 1. Join with Products to get the Name
+            // Join
             {
                 $lookup: {
-                    from: 'products',       // Must match DB collection name (lowercase plural)
+                    from: 'products',
                     localField: 'productId',
                     foreignField: '_id',
                     as: 'productDetails'
                 }
             },
-            
-            // 2. Unwind array to access fields
+            // Unwind
             { $unwind: '$productDetails' },
-
-            // 3. Apply Sorting
+            // Search Filter
+            { $match: matchStage },
+            // Sort
             { $sort: sortStage },
-
-            // 4. Get Data + Count (in parallel using facet)
+            // Pagination & Count
             {
                 $facet: {
                     data: [
                         { $skip: skip },
                         { $limit: limit },
-                        // Reshape to match standard .populate() output
-                        { 
-                            $addFields: { productId: "$productDetails" } 
-                        },
+                        { $addFields: { productId: "$productDetails" } },
                         { $project: { productDetails: 0 } }
                     ],
                     metadata: [ { $count: "total" } ]
@@ -118,7 +154,6 @@ exports.getAllStockItems = async (req, res) => {
             }
         ]);
 
-        // D. Extract data safely
         const stockItems = result[0].data;
         const totalItems = result[0].metadata[0] ? result[0].metadata[0].total : 0;
 

@@ -1,8 +1,6 @@
 export interface ProductDetails {
   _id: string;
-  measure: string;
-  name: string;
-  potency: string;
+  name: string; 
   type: string;
   __v: number;
   createdAt: string;
@@ -11,6 +9,8 @@ export interface ProductDetails {
 
 export interface MedicineItem {
   _id: string;
+  potency: string;
+  measure: string;
   productId: ProductDetails;
   brand: string;
   quantity: number;
